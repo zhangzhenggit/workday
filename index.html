@@ -257,7 +257,7 @@
       display:flex;
       align-items:center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       padding: 12px 14px;
       border-bottom: 1px solid var(--line);
     }
@@ -312,7 +312,6 @@
     }
     .day.muted{
       color: color-mix(in srgb, var(--subtext) 70%, transparent);
-      cursor: default;
       opacity: .55;
     }
     .day.norec{
@@ -362,24 +361,36 @@
       overflow:hidden;
       border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
     }
+
+    /* ✅ iOS-like compressed sheet spacing */
     .modal .mh{
-      padding: 14px 16px 8px;
+      padding: 12px 16px 6px;
       text-align:center;
       border-bottom: 1px solid var(--line);
     }
     .modal .mh .mt{
       font-size: 17px;
       font-weight: 700;
+      letter-spacing: .2px;
     }
     .modal .mh .ms{
-      margin-top: 4px;
+      margin-top: 2px;
       font-size: 12px;
       color: var(--subtext);
       font-variant-numeric: tabular-nums;
     }
     .modal .mb{
-      padding: 12px 12px 14px;
+      padding: 8px 12px 10px;
     }
+    .modal .row{
+      padding: 10px 14px;
+    }
+    .modal .actions{
+      display:flex;
+      gap: 8px;
+      padding: 0 12px 10px;
+    }
+
     .cell{
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -392,9 +403,10 @@
       border-bottom: 1px solid var(--line);
     }
     .cell .row:last-child{ border-bottom: 0; }
+
     input[type="time"]{
       width: 120px;
-      padding: 8px 10px;
+      padding: 6px 10px;
       border-radius: 12px;
       border: 1px solid var(--line);
       background: var(--card);
@@ -402,11 +414,7 @@
       font-size: 15px;
       font-variant-numeric: tabular-nums;
     }
-    .modal .actions{
-      display:flex;
-      gap: 10px;
-      padding: 0 12px 14px;
-    }
+
     .modal .actions .btn{ width: 100%; }
     .modal .foot{
       padding: 0 12px 14px;
@@ -502,6 +510,7 @@
             <div class="toolbar">
               <button class="iconbtn" id="prevMonth" type="button">‹</button>
               <div class="month" id="monthTitle">—</div>
+              <button class="iconbtn" id="nextMonth" type="button">›</button>
               <button class="iconbtn" id="moreBtn" type="button" aria-label="更多">⋯</button>
             </div>
             <div class="calendar">
@@ -672,6 +681,7 @@
     const monthTitle = document.getElementById("monthTitle");
     const calGrid = document.getElementById("calGrid");
     const prevMonthBtn = document.getElementById("prevMonth");
+    const nextMonthBtn = document.getElementById("nextMonth");
     const detailTitle = document.getElementById("detailTitle");
     const detailBadge = document.getElementById("detailBadge");
     const detailBody = document.getElementById("detailBody");
@@ -713,8 +723,6 @@
     const editCancel = document.getElementById("editCancel");
     const editSave = document.getElementById("editSave");
     let editDate = null; // YYYY-MM-DD
-
-    // default-follow planned out
     let editOutAuto = false;
     let editOutAutoBase = null;
 
@@ -774,9 +782,7 @@
       return `${pad2(h)}:${pad2(mm)}`;
     }
 
-    function minutesDiff(a, b){
-      return b - a;
-    }
+    function minutesDiff(a, b){ return b - a; }
 
     function humanDuration(mins){
       if (mins == null) return "—";
@@ -833,6 +839,21 @@
       return minutesToHHmm(inMin + workMins);
     }
 
+    // ✅ 仅当天：超过计划下班+60min后 => 已达标（不再增长）
+    function getTodayProgress(rec, expectedHHmm){
+      if (!rec?.clockIn) return { reached:false, text:"—" };
+      const inMin = hhmmToMinutes(rec.clockIn);
+      const expectedMin = hhmmToMinutes(expectedHHmm);
+      const nowMin = hhmmToMinutes(nowHHmm());
+      if (inMin == null || expectedMin == null || nowMin == null) return { reached:false, text:"—" };
+
+      const capMin = expectedMin + 60;
+      if (nowMin >= capMin) return { reached:true, text:"已达标" };
+
+      const effOutMin = Math.min(nowMin, capMin);
+      return { reached:false, text: humanDuration(minutesDiff(inMin, effOutMin)) };
+    }
+
     // ---------------------------
     // Storage
     // ---------------------------
@@ -858,9 +879,7 @@
       }
     }
 
-    function getRecord(dateISO){
-      return records[dateISO] || null;
-    }
+    function getRecord(dateISO){ return records[dateISO] || null; }
 
     function upsertRecord(dateISO, patch){
       const base = getRecord(dateISO);
@@ -878,11 +897,7 @@
         updatedAt: now,
         ...patch,
       };
-      if (next.clockIn){
-        next.expectedOff = expectedOffTime(next.clockIn, weekday);
-      } else {
-        next.expectedOff = null;
-      }
+      next.expectedOff = next.clockIn ? expectedOffTime(next.clockIn, weekday) : null;
       records[dateISO] = next;
       saveRecords();
       return next;
@@ -930,23 +945,38 @@
       const expected = rec.expectedOff || expectedOffTime(rec.clockIn, wd);
       const hasOut = !!rec.clockOut;
 
-      if (!hasOut){
-        todayBadgeEl.className = "badge ok";
-        todayBadgeEl.textContent = "已打卡";
-      } else {
-        todayBadgeEl.className = "badge done";
-        todayBadgeEl.textContent = "已完成";
+      let reached = false;
+      let progressText = "—";
+      if (!hasOut && expected){
+        const prog = getTodayProgress(rec, expected);
+        reached = prog.reached;
+        progressText = prog.text;
       }
 
-      const inMin = hhmmToMinutes(rec.clockIn);
-      const outMin = rec.clockOut ? hhmmToMinutes(rec.clockOut) : hhmmToMinutes(nowHHmm());
-      const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+      if (hasOut){
+        todayBadgeEl.className = "badge done";
+        todayBadgeEl.textContent = "已完成";
+      } else if (reached){
+        todayBadgeEl.className = "badge done";
+        todayBadgeEl.textContent = "已达标";
+      } else {
+        todayBadgeEl.className = "badge ok";
+        todayBadgeEl.textContent = "已打卡";
+      }
 
       const rows = [];
       rows.push(rowHTML("上班时间", rec.clockIn));
       rows.push(rowHTML("预计下班", expected ?? "—"));
       rows.push(rowHTML("下班时间", rec.clockOut ?? "—"));
-      rows.push(rowHTML(hasOut ? "实际工时" : "当前工作", humanDuration(dur)));
+
+      if (hasOut){
+        const inMin = hhmmToMinutes(rec.clockIn);
+        const outMin = hhmmToMinutes(rec.clockOut);
+        const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+        rows.push(rowHTML("实际工时", humanDuration(dur)));
+      } else {
+        rows.push(rowHTML("当前工作", progressText));
+      }
 
       todayCardBody.innerHTML = rows.join("");
 
@@ -957,7 +987,7 @@
     }
 
     // ---------------------------
-    // History render (initial select today + refresh detail)
+    // History render
     // ---------------------------
     function renderHistory(){
       const y = calCursor.getFullYear();
@@ -966,6 +996,7 @@
 
       const today = new Date();
       const todayISO = toISODate(today);
+
       if (!selectedDate && today.getFullYear() === y && today.getMonth() === m) {
         selectedDate = todayISO;
       }
@@ -974,7 +1005,6 @@
       const first = new Date(y, m, 1);
       const startWeekday = first.getDay();
       const daysInMonth = new Date(y, m+1, 0).getDate();
-
       const totalCells = 42;
 
       const monthRecords = {};
@@ -996,6 +1026,7 @@
 
         const iso = toISODate(new Date(y, m, dayNum));
         const rec = monthRecords[iso] || null;
+        const isFuture = iso > todayISO;
 
         const cell = document.createElement("div");
         cell.className = "day";
@@ -1004,6 +1035,11 @@
           cell.classList.add("norec");
         } else {
           cell.classList.add("hasrec");
+        }
+
+        // ✅ 未来日期：仅视觉置灰，但仍允许选中（下方不显示由 renderDetail 控制）
+        if (isFuture && !rec){
+          cell.classList.add("muted");
         }
 
         if (iso === todayISO) cell.classList.add("today");
@@ -1049,48 +1085,84 @@
         return;
       }
 
+      const todayISO = toISODate(new Date());
+      const isFuture = dateISO > todayISO;
+      const isToday = dateISO === todayISO;
+      const isPast  = dateISO < todayISO;
+
       const d = parseISODate(dateISO);
-      const wdCN = formatWeekdayCN(d);
-      detailTitle.textContent = `${dateISO} ${wdCN}`;
+      detailTitle.textContent = `${dateISO} ${formatWeekdayCN(d)}`;
+
+      // ✅ 今日之后：下面不要显示（你要求的）
+      if (isFuture){
+        detailBadge.textContent = "—";
+        detailBadge.className = "badge";
+        detailBody.innerHTML = ``;      // 彻底空
+        detailActions.hidden = true;    // 无操作
+        return;
+      }
 
       const rec = getRecord(dateISO);
       const hrs = workHoursByWeekday(d.getDay());
 
-      // ✅ 无记录：按钮改为“记录”，不显示删除
+      // ✅ 过去/今天无记录：显示休息/未打卡，但允许补录（显示“记录”）
       if (!rec || !rec.clockIn){
-        detailBadge.textContent = "未打卡";
+        detailBadge.textContent = isPast ? "休息" : "未打卡";
         detailBadge.className = "badge";
+
         detailBody.innerHTML = `
           <div class="row"><div class="k">工时规则</div><div class="v mono">${hrs}小时</div></div>
-          <div class="row"><div class="k">状态</div><div class="v mono">休息</div></div>
+          <div class="row"><div class="k">状态</div><div class="v mono">${isPast ? "休息" : "未打卡"}</div></div>
         `;
+
         detailActions.hidden = false;
         btnEditSelected.textContent = "记录";
         deleteWrap.style.display = "none";
         return;
       }
 
+      // 有上班记录
       const expected = rec.expectedOff || expectedOffTime(rec.clockIn, d.getDay());
       const hasOut = !!rec.clockOut;
 
-      if (!hasOut){
-        detailBadge.textContent = "已打卡";
-        detailBadge.className = "badge ok";
-      } else {
-        detailBadge.textContent = "已完成";
-        detailBadge.className = "badge done";
+      let reached = false;
+      if (isToday && !hasOut && expected){
+        reached = getTodayProgress(rec, expected).reached;
       }
 
-      const inMin = hhmmToMinutes(rec.clockIn);
-      const outMin = rec.clockOut ? hhmmToMinutes(rec.clockOut) : hhmmToMinutes(nowHHmm());
-      const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+      if (hasOut){
+        detailBadge.textContent = "已完成";
+        detailBadge.className = "badge done";
+      } else if (isToday && reached){
+        detailBadge.textContent = "已达标";
+        detailBadge.className = "badge done";
+      } else {
+        detailBadge.textContent = "已打卡";
+        detailBadge.className = "badge ok";
+      }
 
-      detailBody.innerHTML = [
-        rowHTML("上班时间", rec.clockIn),
-        rowHTML("预计下班", expected ?? "—"),
-        rowHTML("下班时间", rec.clockOut ?? "—"),
-        rowHTML(hasOut ? "实际工时" : "当前工作", humanDuration(dur)),
-      ].join("");
+      const rows = [];
+      rows.push(rowHTML("上班时间", rec.clockIn));
+      rows.push(rowHTML("预计下班", expected ?? "—"));
+      rows.push(rowHTML("下班时间", rec.clockOut ?? "—"));
+
+      if (hasOut){
+        const inMin = hhmmToMinutes(rec.clockIn);
+        const outMin = hhmmToMinutes(rec.clockOut);
+        const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+        rows.push(rowHTML("实际工时", humanDuration(dur)));
+      } else {
+        // ✅ 历史没下班：显示 —
+        if (!isToday){
+          rows.push(rowHTML("实际工时", "—"));
+        } else {
+          // ✅ 今天没下班：显示 当前工作（达标后显示已达标）
+          const prog = expected ? getTodayProgress(rec, expected) : { text:"—" };
+          rows.push(rowHTML("当前工作", prog.text));
+        }
+      }
+
+      detailBody.innerHTML = rows.join("");
 
       detailActions.hidden = false;
       btnEditSelected.textContent = "编辑";
@@ -1218,6 +1290,12 @@
     // Edit Day Modal (clockIn + clockOut)
     // ---------------------------
     function openEditDayModal(dateISO){
+      const todayISO = toISODate(new Date());
+      if (dateISO > todayISO){
+        showToast("未来日期不支持记录");
+        return;
+      }
+
       editDate = dateISO;
       const d = parseISODate(dateISO);
       const rec = getRecord(dateISO);
@@ -1225,12 +1303,9 @@
       editTitle.textContent = (rec && rec.clockIn) ? "编辑记录" : "记录";
       editSub.textContent = `${dateISO} ${formatWeekdayCN(d)}`;
 
-      // 上班：无记录默认 09:00
       editIn.value = rec?.clockIn || "09:00";
 
-      // 下班：
-      // - 有下班：用实际下班
-      // - 无下班（含无记录 / 只有上班）：默认填“计划下班时间”
+      // 下班可为空：默认填计划下班（便于改），也可手动清空
       if (rec?.clockOut) {
         editOut.value = rec.clockOut;
         editOutAuto = false;
@@ -1277,7 +1352,7 @@
       }
     }
 
-    // ✅ 上班时间变更：如果下班仍是“自动计划值”，则跟随刷新
+    // 上班变更：若下班仍是“自动计划值”，则跟随刷新
     editIn.addEventListener("input", () => {
       if (!editDate) return;
 
@@ -1292,7 +1367,7 @@
       updateEditDayCalc();
     });
 
-    // ✅ 一旦用户手动改下班，就不再自动跟随
+    // 手动改下班：停止自动跟随
     editOut.addEventListener("input", () => {
       editOutAuto = false;
       editOutAutoBase = null;
@@ -1384,7 +1459,11 @@
       renderHistory();
     });
 
-    // History "Edit/Record" edits BOTH clockIn + clockOut
+    nextMonthBtn.addEventListener("click", () => {
+      calCursor = addMonths(calCursor, +1);
+      renderHistory();
+    });
+
     btnEditSelected.addEventListener("click", () => {
       if (!selectedDate) return;
       openEditDayModal(selectedDate);
@@ -1508,6 +1587,8 @@
     function tick(){
       nowTimeEl.textContent = nowHHmmss();
       if (pageHome.classList.contains("active")) renderHome();
+
+      // 仅当天 + 只有上班：动态刷新“当前工作/已达标”
       if (pageHistory.classList.contains("active") && selectedDate){
         const todayISO = toISODate(new Date());
         if (selectedDate === todayISO){
