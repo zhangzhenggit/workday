@@ -1,0 +1,17 @@
+{
+  "name": "Workday",
+  "short_name": "Workday",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#0A84FF",
+  "description": "极简打卡与工时记录（本地存储）",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

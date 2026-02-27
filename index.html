@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0A84FF" />
+  <title>Workday</title>
+
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+
+  <style>
+    :root{
+      --bg: #F2F2F7;
+      --card: #FFFFFF;
+      --text: #111111;
+      --subtext: rgba(60,60,67,.6);
+      --line: rgba(60,60,67,.18);
+      --accent: #0A84FF;
+      --danger: #FF3B30;
+      --shadow: 0 8px 24px rgba(0,0,0,.06);
+
+      --radius-card: 16px;
+      --radius-btn: 14px;
+      --radius-modal: 20px;
+
+      --pad: 16px;
+      --gap-1: 8px;
+      --gap-2: 12px;
+      --gap-3: 16px;
+
+      --fs-title: 18px;
+      --fs-hero: 46px;
+      --fs-body: 16px;
+      --fs-sub: 13px;
+
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg: #000000;
+        --card: #1C1C1E;
+        --text: #FFFFFF;
+        --subtext: rgba(235,235,245,.6);
+        --line: rgba(235,235,245,.18);
+        --shadow: 0 10px 30px rgba(0,0,0,.35);
+      }
+    }
+
+    *{ box-sizing: border-box; }
+    body{
+      margin:0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+                   "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a, button { -webkit-tap-highlight-color: transparent; }
+
+    .app{
+      max-width: 520px;
+      margin: 0 auto;
+      padding-bottom: calc(var(--safe-bottom) + 18px);
+    }
+
+    .header{
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: color-mix(in srgb, var(--bg) 92%, transparent);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--line);
+      padding: calc(var(--safe-top) + 10px) var(--pad) 10px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .header .title{
+      font-size: var(--fs-title);
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    .header .right{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+
+    .seg{
+      display:flex;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+    }
+    .seg button{
+      border: 0;
+      background: transparent;
+      color: var(--subtext);
+      padding: 10px 12px;
+      font-size: 14px;
+      cursor: pointer;
+      min-width: 72px;
+    }
+    .seg button.active{
+      background: var(--card);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    main{ padding: var(--pad); }
+    .stack{ display:flex; flex-direction: column; gap: var(--gap-3); }
+
+    .hero{
+      text-align:center;
+      padding: 10px 0 2px;
+    }
+    .hero .time{
+      font-size: var(--fs-hero);
+      font-weight: 600;
+      line-height: 1.05;
+      letter-spacing: .6px;
+    }
+    .hero .sub{
+      margin-top: 6px;
+      font-size: var(--fs-sub);
+      color: var(--subtext);
+    }
+
+    .card{
+      background: var(--card);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow);
+      border: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+      overflow:hidden;
+    }
+
+    .card .card-hd{
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .badge{
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--subtext);
+      background: color-mix(in srgb, var(--bg) 60%, transparent);
+      white-space: nowrap;
+    }
+    .badge.ok{
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: color-mix(in srgb, var(--accent) 14%, var(--card));
+    }
+    .badge.done{
+      color: #34C759;
+      border-color: color-mix(in srgb, #34C759 45%, var(--line));
+      background: color-mix(in srgb, #34C759 12%, var(--card));
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: var(--fs-body);
+    }
+    .row:last-child{ border-bottom: 0; }
+    .row .k{ color: var(--subtext); }
+    .row .v{ font-weight: 600; letter-spacing: .2px; }
+    .row .v.mono{ font-variant-numeric: tabular-nums; }
+
+    .empty{
+      padding: 18px 14px;
+      color: var(--subtext);
+      text-align:center;
+      font-size: 14px;
+    }
+
+    .btn{
+      width: 100%;
+      border: 0;
+      border-radius: var(--radius-btn);
+      padding: 14px 16px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+    }
+    .btn.primary{
+      background: var(--accent);
+      color: white;
+    }
+    .btn.primary:active{ transform: scale(.99); filter: brightness(.95); }
+    .btn.secondary{
+      background: color-mix(in srgb, var(--card) 85%, transparent);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .btn.secondary:active{ transform: scale(.99); }
+    .btn.danger{
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid color-mix(in srgb, var(--danger) 55%, var(--line));
+    }
+    .btn.danger:active{ transform: scale(.99); }
+
+    .hint{
+      font-size: 12px;
+      color: var(--subtext);
+      text-align:center;
+      padding: 4px 10px;
+    }
+
+    /* History calendar */
+    .toolbar{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .toolbar .month{
+      font-weight: 700;
+      letter-spacing: .2px;
+      flex: 1;
+      text-align:center;
+    }
+    .iconbtn{
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 700;
+      min-width: 40px;
+    }
+    .iconbtn:active{ transform: scale(.98); }
+
+    .calendar{
+      padding: 10px 12px 14px;
+    }
+    .dow{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      font-size: 12px;
+      color: var(--subtext);
+      padding: 0 2px 8px;
+      user-select:none;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+    .day{
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-variant-numeric: tabular-nums;
+      user-select:none;
+      cursor:pointer;
+      color: var(--text);
+      background: transparent;
+    }
+    .day.muted{
+      color: color-mix(in srgb, var(--subtext) 70%, transparent);
+      cursor: default;
+      opacity: .55;
+    }
+    .day.norec{
+      color: color-mix(in srgb, var(--subtext) 80%, transparent);
+      opacity: .55;
+    }
+    .day.today{
+      border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    }
+    .day.hasrec{
+      background: color-mix(in srgb, var(--accent) 10%, var(--card));
+      border-color: color-mix(in srgb, var(--accent) 20%, var(--line));
+      opacity: 1;
+      color: var(--text);
+    }
+    .day.selected{
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    .dot{
+      position:absolute;
+      bottom: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    /* Modal / Sheet */
+    .backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.35);
+      display:none;
+      align-items:flex-end;
+      justify-content:center;
+      padding: 14px;
+      z-index: 100;
+    }
+    .backdrop.show{ display:flex; }
+
+    .modal{
+      width: min(520px, 100%);
+      background: var(--card);
+      border-radius: var(--radius-modal);
+      box-shadow: 0 18px 60px rgba(0,0,0,.25);
+      overflow:hidden;
+      border: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    }
+    .modal .mh{
+      padding: 14px 16px 8px;
+      text-align:center;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal .mh .mt{
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .modal .mh .ms{
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--subtext);
+      font-variant-numeric: tabular-nums;
+    }
+    .modal .mb{
+      padding: 12px 12px 14px;
+    }
+    .cell{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow:hidden;
+      background: color-mix(in srgb, var(--bg) 40%, transparent);
+      margin-bottom: 12px;
+    }
+    .cell .row{
+      background: transparent;
+      border-bottom: 1px solid var(--line);
+    }
+    .cell .row:last-child{ border-bottom: 0; }
+    input[type="time"]{
+      width: 120px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--text);
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+    .modal .actions{
+      display:flex;
+      gap: 10px;
+      padding: 0 12px 14px;
+    }
+    .modal .actions .btn{ width: 100%; }
+    .modal .foot{
+      padding: 0 12px 14px;
+    }
+    .mini{
+      font-size: 12px;
+      color: var(--subtext);
+      text-align:center;
+      padding: 0 14px 10px;
+    }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(var(--safe-bottom) + 16px);
+      background: rgba(28,28,30,.92);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      display:none;
+      z-index: 200;
+      max-width: 90vw;
+      text-align:center;
+    }
+    .toast.show{ display:block; }
+
+    .page{ display:none; }
+    .page.active{ display:block; }
+
+    /* hidden file input */
+    .sr-only{
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0,0,0,0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="title">Workday</div>
+      <div class="right">
+        <div class="seg" aria-label="tabs">
+          <button id="tabHome" class="active" type="button">首页</button>
+          <button id="tabHistory" type="button">历史</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- HOME -->
+      <section id="pageHome" class="page active">
+        <div class="stack">
+          <div class="hero">
+            <div class="time" id="nowTime">--:--:--</div>
+            <div class="sub" id="todayRule">今天：—  工时：—</div>
+          </div>
+
+          <div class="card">
+            <div class="card-hd">
+              <div style="font-weight:700;">今日</div>
+              <div class="badge" id="todayBadge">未打卡</div>
+            </div>
+
+            <div id="todayCardBody">
+              <div class="empty">今日未打卡</div>
+            </div>
+          </div>
+
+          <div class="stack" style="gap: 10px;">
+            <button class="btn primary" id="btnClockIn" type="button">上班打卡</button>
+            <button class="btn secondary" id="btnClockOut" type="button" style="display:none;">下班打卡</button>
+            <button class="btn secondary" id="btnEditToday" type="button" style="display:none;">修改记录</button>
+          </div>
+
+          <div class="hint">数据保存在本机站点存储。建议定期手动备份（历史页右上角“⋯”）。</div>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section id="pageHistory" class="page">
+        <div class="stack">
+          <div class="card">
+            <div class="toolbar">
+              <button class="iconbtn" id="prevMonth" type="button">‹</button>
+              <div class="month" id="monthTitle">—</div>
+              <!-- 低调的备份入口：⋯ -->
+              <button class="iconbtn" id="moreBtn" type="button" aria-label="更多">⋯</button>
+            </div>
+            <div class="calendar">
+              <div class="dow">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+              </div>
+              <div class="grid" id="calGrid"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-hd">
+              <div style="font-weight:700;" id="detailTitle">选择日期</div>
+              <div class="badge" id="detailBadge">—</div>
+            </div>
+            <div id="detailBody">
+              <div class="empty">点上方日历选择某一天查看记录</div>
+            </div>
+            <div style="padding: 12px 14px;" id="detailActions" hidden>
+              <button class="btn secondary" id="btnEditSelected" type="button">编辑</button>
+              <div style="height:10px;"></div>
+              <button class="btn danger" id="btnDeleteSelected" type="button">删除</button>
+            </div>
+          </div>
+
+          <div class="hint">无记录日期置灰；有记录高亮；已完成显示蓝点。</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- CLOCK MODAL -->
+  <div class="backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt" id="modalTitle">—</div>
+        <div class="ms" id="modalSub">—</div>
+      </div>
+      <div class="mb">
+        <div class="cell">
+          <div class="row">
+            <div class="k">时间</div>
+            <div class="v">
+              <input id="timeInput" type="time" step="60" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="k" id="calcKey">预计下班</div>
+            <div class="v mono" id="calcValue">--:--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" id="modalCancel" type="button">取消</button>
+        <button class="btn primary" id="modalSave" type="button">保存</button>
+      </div>
+
+      <div class="foot" id="modalFoot" hidden>
+        <button class="btn danger" id="modalDelete" type="button">删除记录</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKUP SHEET (subtle entry via ⋯) -->
+  <div class="backdrop" id="backupBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt">备份</div>
+        <div class="ms">导出 JSON 保存到 Files/iCloud；清缓存后可导入恢复</div>
+      </div>
+
+      <div class="mb">
+        <div class="cell">
+          <div class="row">
+            <div class="k">记录条数</div>
+            <div class="v mono" id="backupCount">0</div>
+          </div>
+          <div class="row">
+            <div class="k">存储键</div>
+            <div class="v mono">workday_records_v1</div>
+          </div>
+        </div>
+
+        <button class="btn primary" id="btnExport" type="button">导出备份（JSON）</button>
+        <div style="height:10px;"></div>
+        <button class="btn secondary" id="btnImport" type="button">导入恢复（JSON）</button>
+      </div>
+
+      <div class="mini">入口已隐藏在“⋯”。建议每周或每月手动导出一次。</div>
+
+      <div class="actions">
+        <button class="btn secondary" id="backupClose" type="button">关闭</button>
+        <button class="btn secondary" id="backupCancel" type="button">取消</button>
+      </div>
+    </div>
+
+    <input class="sr-only" id="importFile" type="file" accept="application/json,.json" />
+  </div>
+
+  <div class="toast" id="toast">已保存</div>
+
+  <script>
+    // ---------------------------
+    // Workday PWA - Single file app
+    // ---------------------------
+    const STORE_KEY = "workday_records_v1";
+
+    // Tabs
+    const tabHome = document.getElementById("tabHome");
+    const tabHistory = document.getElementById("tabHistory");
+    const pageHome = document.getElementById("pageHome");
+    const pageHistory = document.getElementById("pageHistory");
+
+    // Home
+    const nowTimeEl = document.getElementById("nowTime");
+    const todayRuleEl = document.getElementById("todayRule");
+    const todayBadgeEl = document.getElementById("todayBadge");
+    const todayCardBody = document.getElementById("todayCardBody");
+    const btnClockIn = document.getElementById("btnClockIn");
+    const btnClockOut = document.getElementById("btnClockOut");
+    const btnEditToday = document.getElementById("btnEditToday");
+
+    // History
+    const monthTitle = document.getElementById("monthTitle");
+    const calGrid = document.getElementById("calGrid");
+    const prevMonthBtn = document.getElementById("prevMonth");
+    const nextMonthBtn = document.getElementById("nextMonth"); // not used now (we use moreBtn instead of next; keep logic with cursor buttons)
+    const detailTitle = document.getElementById("detailTitle");
+    const detailBadge = document.getElementById("detailBadge");
+    const detailBody = document.getElementById("detailBody");
+    const detailActions = document.getElementById("detailActions");
+    const btnEditSelected = document.getElementById("btnEditSelected");
+    const btnDeleteSelected = document.getElementById("btnDeleteSelected");
+
+    // More / Backup
+    const moreBtn = document.getElementById("moreBtn");
+    const backupBackdrop = document.getElementById("backupBackdrop");
+    const backupClose = document.getElementById("backupClose");
+    const backupCancel = document.getElementById("backupCancel");
+    const backupCount = document.getElementById("backupCount");
+    const btnExport = document.getElementById("btnExport");
+    const btnImport = document.getElementById("btnImport");
+    const importFile = document.getElementById("importFile");
+
+    // Clock Modal
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalSub = document.getElementById("modalSub");
+    const timeInput = document.getElementById("timeInput");
+    const calcKey = document.getElementById("calcKey");
+    const calcValue = document.getElementById("calcValue");
+    const modalCancel = document.getElementById("modalCancel");
+    const modalSave = document.getElementById("modalSave");
+    const modalFoot = document.getElementById("modalFoot");
+    const modalDelete = document.getElementById("modalDelete");
+
+    // Toast
+    const toastEl = document.getElementById("toast");
+
+    // State
+    let records = loadRecords();
+    let modalMode = null; // "clockIn" | "clockOut" | "editClockIn" | "editClockOut"
+    let modalDate = null; // YYYY-MM-DD
+    let selectedDate = null; // YYYY-MM-DD
+    let calCursor = startOfMonth(new Date());
+
+    // ---------------------------
+    // Utils
+    // ---------------------------
+    const pad2 = (n) => String(n).padStart(2, "0");
+
+    function toISODate(d){
+      const y = d.getFullYear();
+      const m = pad2(d.getMonth() + 1);
+      const day = pad2(d.getDate());
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseISODate(iso){
+      const [y,m,d] = iso.split("-").map(Number);
+      return new Date(y, m-1, d, 0, 0, 0, 0);
+    }
+
+    function formatWeekdayCN(date){
+      const map = ["周日","周一","周二","周三","周四","周五","周六"];
+      return map[date.getDay()];
+    }
+
+    function nowHHmm(){
+      const d = new Date();
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    }
+
+    function nowHHmmss(){
+      const d = new Date();
+      return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
+
+    function hhmmToMinutes(hhmm){
+      if (!hhmm || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
+      const [h,m] = hhmm.split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function minutesToHHmm(total){
+      let m = total % (24*60);
+      if (m < 0) m += 24*60;
+      const h = Math.floor(m / 60);
+      const mm = m % 60;
+      return `${pad2(h)}:${pad2(mm)}`;
+    }
+
+    function minutesDiff(a, b){
+      return b - a;
+    }
+
+    function humanDuration(mins){
+      if (mins == null) return "—";
+      const sign = mins < 0 ? "-" : "";
+      mins = Math.abs(mins);
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      if (h === 0) return `${sign}${m}分钟`;
+      if (m === 0) return `${sign}${h}小时`;
+      return `${sign}${h}小时${m}分钟`;
+    }
+
+    function startOfMonth(d){
+      return new Date(d.getFullYear(), d.getMonth(), 1, 0,0,0,0);
+    }
+
+    function addMonths(d, delta){
+      return new Date(d.getFullYear(), d.getMonth() + delta, 1, 0,0,0,0);
+    }
+
+    function escapeHTML(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
+
+    function rowHTML(k, v){
+      return `
+        <div class="row">
+          <div class="k">${escapeHTML(k)}</div>
+          <div class="v mono">${escapeHTML(v)}</div>
+        </div>`;
+    }
+
+    // ---------------------------
+    // Business rules
+    // ---------------------------
+    function workHoursByWeekday(weekday){
+      // 周一~周四：11.5, 周五：9, 周六：8, 周日：8
+      if (weekday >= 1 && weekday <= 4) return 11.5;
+      if (weekday === 5) return 9;
+      if (weekday === 6) return 8;
+      if (weekday === 0) return 8;
+      return 8;
+    }
+
+    function expectedOffTime(clockInHHmm, weekday){
+      const inMin = hhmmToMinutes(clockInHHmm);
+      if (inMin == null) return null;
+      const workMins = Math.round(workHoursByWeekday(weekday) * 60);
+      return minutesToHHmm(inMin + workMins);
+    }
+
+    // ---------------------------
+    // Storage
+    // ---------------------------
+    function loadRecords(){
+      try{
+        const raw = localStorage.getItem(STORE_KEY);
+        if (!raw) return {};
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === "object") return obj;
+        return {};
+      }catch(e){
+        console.warn("loadRecords failed:", e);
+        return {};
+      }
+    }
+
+    function saveRecords(){
+      try{
+        localStorage.setItem(STORE_KEY, JSON.stringify(records));
+      }catch(e){
+        alert("保存失败：localStorage 不可用或空间不足。");
+        console.error(e);
+      }
+    }
+
+    function getRecord(dateISO){
+      return records[dateISO] || null;
+    }
+
+    function upsertRecord(dateISO, patch){
+      const base = getRecord(dateISO);
+      const now = Date.now();
+      const d = parseISODate(dateISO);
+      const weekday = d.getDay();
+      const next = {
+        id: base?.id || cryptoRandomId(),
+        date: dateISO,
+        weekday,
+        clockIn: base?.clockIn || null,
+        clockOut: base?.clockOut || null,
+        expectedOff: base?.expectedOff || null,
+        createdAt: base?.createdAt || now,
+        updatedAt: now,
+        ...patch,
+      };
+      if (next.clockIn){
+        next.expectedOff = expectedOffTime(next.clockIn, weekday);
+      } else {
+        next.expectedOff = null;
+      }
+      records[dateISO] = next;
+      saveRecords();
+      return next;
+    }
+
+    function deleteRecord(dateISO){
+      if (records[dateISO]){
+        delete records[dateISO];
+        saveRecords();
+      }
+    }
+
+    function cryptoRandomId(){
+      const a = new Uint32Array(2);
+      crypto.getRandomValues(a);
+      return `${a[0].toString(16)}${a[1].toString(16)}`;
+    }
+
+    // ---------------------------
+    // Home render
+    // ---------------------------
+    function renderHome(){
+      const today = new Date();
+      const todayISO = toISODate(today);
+      const wd = today.getDay();
+
+      const hrs = workHoursByWeekday(wd);
+      todayRuleEl.textContent = `今天：${formatWeekdayCN(today)}  工时：${hrs}小时`;
+
+      const rec = getRecord(todayISO);
+
+      btnClockOut.style.display = "none";
+      btnEditToday.style.display = "none";
+
+      if (!rec || !rec.clockIn){
+        todayBadgeEl.className = "badge";
+        todayBadgeEl.textContent = "未打卡";
+        todayCardBody.innerHTML = `<div class="empty">今日未打卡</div>`;
+        btnClockIn.textContent = "上班打卡";
+        btnClockIn.style.display = "block";
+        return;
+      }
+
+      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, wd);
+      const hasOut = !!rec.clockOut;
+
+      if (!hasOut){
+        todayBadgeEl.className = "badge ok";
+        todayBadgeEl.textContent = "已打卡";
+      } else {
+        todayBadgeEl.className = "badge done";
+        todayBadgeEl.textContent = "已完成";
+      }
+
+      const inMin = hhmmToMinutes(rec.clockIn);
+      const outMin = rec.clockOut ? hhmmToMinutes(rec.clockOut) : hhmmToMinutes(nowHHmm());
+      const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+
+      const rows = [];
+      rows.push(rowHTML("上班时间", rec.clockIn));
+      rows.push(rowHTML("预计下班", expected ?? "—"));
+      rows.push(rowHTML("下班时间", rec.clockOut ?? "—"));
+      rows.push(rowHTML(hasOut ? "实际工时" : "当前工作", humanDuration(dur)));
+
+      todayCardBody.innerHTML = rows.join("");
+
+      btnClockIn.textContent = "修改上班时间";
+      btnClockIn.style.display = "block";
+      btnClockOut.style.display = hasOut ? "none" : "block";
+      btnEditToday.style.display = hasOut ? "block" : "none";
+    }
+
+    // ---------------------------
+    // History render
+    // ---------------------------
+    function renderHistory(){
+      const y = calCursor.getFullYear();
+      const m = calCursor.getMonth();
+      monthTitle.textContent = `${y}年 ${m+1}月`;
+
+      calGrid.innerHTML = "";
+      const first = new Date(y, m, 1);
+      const startWeekday = first.getDay();
+      const daysInMonth = new Date(y, m+1, 0).getDate();
+
+      const totalCells = 42;
+      const todayISO = toISODate(new Date());
+
+      const monthRecords = {};
+      for (let d=1; d<=daysInMonth; d++){
+        const iso = toISODate(new Date(y, m, d));
+        const rec = getRecord(iso);
+        if (rec) monthRecords[iso] = rec;
+      }
+
+      for (let i=0; i<totalCells; i++){
+        const dayNum = i - startWeekday + 1;
+        if (dayNum < 1 || dayNum > daysInMonth){
+          const cell = document.createElement("div");
+          cell.className = "day muted";
+          cell.textContent = "";
+          calGrid.appendChild(cell);
+          continue;
+        }
+
+        const iso = toISODate(new Date(y, m, dayNum));
+        const rec = monthRecords[iso] || null;
+
+        const cell = document.createElement("div");
+        cell.className = "day";
+
+        if (!rec){
+          cell.classList.add("norec");
+        } else {
+          cell.classList.add("hasrec");
+        }
+
+        if (iso === todayISO) cell.classList.add("today");
+        if (selectedDate === iso) cell.classList.add("selected");
+
+        cell.textContent = String(dayNum);
+
+        if (rec && rec.clockIn && rec.clockOut){
+          const dot = document.createElement("div");
+          dot.className = "dot";
+          cell.appendChild(dot);
+        }
+
+        cell.addEventListener("click", () => {
+          selectedDate = iso;
+          renderHistory();
+          renderDetail(iso);
+        });
+
+        calGrid.appendChild(cell);
+      }
+
+      if (selectedDate){
+        const sd = parseISODate(selectedDate);
+        if (sd.getFullYear() !== y || sd.getMonth() !== m){
+          selectedDate = null;
+          renderDetail(null);
+        }
+      } else {
+        renderDetail(null);
+      }
+    }
+
+    function renderDetail(dateISO){
+      if (!dateISO){
+        detailTitle.textContent = "选择日期";
+        detailBadge.textContent = "—";
+        detailBadge.className = "badge";
+        detailBody.innerHTML = `<div class="empty">点上方日历选择某一天查看记录</div>`;
+        detailActions.hidden = true;
+        return;
+      }
+
+      const d = parseISODate(dateISO);
+      const wdCN = formatWeekdayCN(d);
+      detailTitle.textContent = `${dateISO} ${wdCN}`;
+
+      const rec = getRecord(dateISO);
+      const hrs = workHoursByWeekday(d.getDay());
+
+      if (!rec || !rec.clockIn){
+        detailBadge.textContent = "未打卡";
+        detailBadge.className = "badge";
+        detailBody.innerHTML = `
+          <div class="row"><div class="k">工时规则</div><div class="v mono">${hrs}小时</div></div>
+          <div class="row"><div class="k">状态</div><div class="v mono">无记录（置灰）</div></div>
+        `;
+        detailActions.hidden = true;
+        return;
+      }
+
+      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, d.getDay());
+      const hasOut = !!rec.clockOut;
+
+      if (!hasOut){
+        detailBadge.textContent = "已打卡";
+        detailBadge.className = "badge ok";
+      } else {
+        detailBadge.textContent = "已完成";
+        detailBadge.className = "badge done";
+      }
+
+      const inMin = hhmmToMinutes(rec.clockIn);
+      const outMin = rec.clockOut ? hhmmToMinutes(rec.clockOut) : hhmmToMinutes(nowHHmm());
+      const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+
+      detailBody.innerHTML = [
+        rowHTML("上班时间", rec.clockIn),
+        rowHTML("预计下班", expected ?? "—"),
+        rowHTML("下班时间", rec.clockOut ?? "—"),
+        rowHTML(hasOut ? "实际工时" : "当前工作", humanDuration(dur)),
+      ].join("");
+
+      detailActions.hidden = false;
+    }
+
+    // ---------------------------
+    // Tabs
+    // ---------------------------
+    function setTab(tab){
+      if (tab === "home"){
+        tabHome.classList.add("active");
+        tabHistory.classList.remove("active");
+        pageHome.classList.add("active");
+        pageHistory.classList.remove("active");
+        renderHome();
+      } else {
+        tabHistory.classList.add("active");
+        tabHome.classList.remove("active");
+        pageHistory.classList.add("active");
+        pageHome.classList.remove("active");
+        renderHistory();
+      }
+    }
+    tabHome.addEventListener("click", () => setTab("home"));
+    tabHistory.addEventListener("click", () => setTab("history"));
+
+    // ---------------------------
+    // Clock Modal
+    // ---------------------------
+    function openClockModal({title, sub, mode, dateISO, defaultTime, showDelete=false}){
+      modalMode = mode;
+      modalDate = dateISO;
+
+      modalTitle.textContent = title;
+      modalSub.textContent = sub;
+
+      timeInput.value = defaultTime || nowHHmm();
+
+      if (mode === "clockIn" || mode === "editClockIn"){
+        calcKey.textContent = "预计下班";
+        updateCalcLine();
+      } else {
+        calcKey.textContent = "实际工时";
+        updateCalcLine();
+      }
+
+      modalFoot.hidden = !showDelete;
+
+      modalBackdrop.classList.add("show");
+      modalBackdrop.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeClockModal(){
+      modalBackdrop.classList.remove("show");
+      modalBackdrop.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      modalMode = null;
+      modalDate = null;
+    }
+
+    function updateCalcLine(){
+      if (!modalDate) return;
+      const d = parseISODate(modalDate);
+      const wd = d.getDay();
+      const rec = getRecord(modalDate);
+
+      const t = timeInput.value;
+      if (!t){
+        calcValue.textContent = "—";
+        return;
+      }
+
+      if (modalMode === "clockIn" || modalMode === "editClockIn"){
+        const exp = expectedOffTime(t, wd);
+        calcValue.textContent = exp ?? "—";
+      } else {
+        const baseIn = rec?.clockIn;
+        const inMin = hhmmToMinutes(baseIn);
+        const outMin = hhmmToMinutes(t);
+        const dur = (inMin != null && outMin != null) ? minutesDiff(inMin, outMin) : null;
+        calcValue.textContent = humanDuration(dur);
+      }
+    }
+
+    timeInput.addEventListener("input", updateCalcLine);
+    document.getElementById("modalCancel").addEventListener("click", closeClockModal);
+    modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeClockModal(); });
+
+    modalSave.addEventListener("click", () => {
+      if (!modalDate || !modalMode) return;
+      const t = timeInput.value;
+      if (!t){ showToast("请选择时间"); return; }
+
+      if (modalMode === "clockIn" || modalMode === "editClockIn"){
+        upsertRecord(modalDate, { clockIn: t });
+        showToast("已保存上班时间");
+      } else {
+        const rec = getRecord(modalDate);
+        if (!rec || !rec.clockIn){ showToast("请先设置上班时间"); return; }
+        upsertRecord(modalDate, { clockOut: t });
+        showToast("已保存下班时间");
+      }
+
+      closeClockModal();
+      if (pageHome.classList.contains("active")) renderHome();
+      if (pageHistory.classList.contains("active")) renderHistory();
+      if (selectedDate) renderDetail(selectedDate);
+    });
+
+    modalDelete.addEventListener("click", () => {
+      if (!modalDate) return;
+      const ok = confirm(`确认删除 ${modalDate} 的记录？`);
+      if (!ok) return;
+      deleteRecord(modalDate);
+      showToast("已删除");
+      closeClockModal();
+      renderHistory();
+      if (selectedDate) renderDetail(selectedDate);
+      renderHome();
+    });
+
+    // Home actions
+    btnClockIn.addEventListener("click", () => {
+      const todayISO = toISODate(new Date());
+      const rec = getRecord(todayISO);
+      openClockModal({
+        title: rec?.clockIn ? "修改上班时间" : "上班打卡",
+        sub: todayISO,
+        mode: rec?.clockIn ? "editClockIn" : "clockIn",
+        dateISO: todayISO,
+        defaultTime: rec?.clockIn || nowHHmm(),
+        showDelete: !!rec?.clockIn
+      });
+    });
+
+    btnClockOut.addEventListener("click", () => {
+      const todayISO = toISODate(new Date());
+      const rec = getRecord(todayISO);
+      if (!rec || !rec.clockIn){ showToast("请先上班打卡"); return; }
+      openClockModal({
+        title: rec.clockOut ? "修改下班时间" : "下班打卡",
+        sub: todayISO,
+        mode: rec.clockOut ? "editClockOut" : "clockOut",
+        dateISO: todayISO,
+        defaultTime: rec.clockOut || nowHHmm(),
+        showDelete: true
+      });
+    });
+
+    btnEditToday.addEventListener("click", () => {
+      const todayISO = toISODate(new Date());
+      const rec = getRecord(todayISO);
+      if (!rec || !rec.clockIn) return;
+      openClockModal({
+        title: "修改上班时间",
+        sub: todayISO,
+        mode: "editClockIn",
+        dateISO: todayISO,
+        defaultTime: rec.clockIn,
+        showDelete: true
+      });
+    });
+
+    // History actions
+    prevMonthBtn.addEventListener("click", () => {
+      calCursor = addMonths(calCursor, -1);
+      renderHistory();
+    });
+
+    // 用右侧 ⋯ 替代 nextMonth：更符合“低调入口”的需求
+    // 如你还想保留 nextMonth，可以把 ⋯ 移到底部 hint，这里我按你要求“隐藏不突出”处理。
+    // nextMonthBtn 不存在时不会报错；本页没有引用它的事件。
+
+    btnEditSelected.addEventListener("click", () => {
+      if (!selectedDate) return;
+      const rec = getRecord(selectedDate);
+      if (!rec || !rec.clockIn) return;
+
+      if (rec.clockOut){
+        openClockModal({
+          title: "编辑下班时间",
+          sub: selectedDate,
+          mode: "editClockOut",
+          dateISO: selectedDate,
+          defaultTime: rec.clockOut,
+          showDelete: true
+        });
+      } else {
+        openClockModal({
+          title: "编辑上班时间",
+          sub: selectedDate,
+          mode: "editClockIn",
+          dateISO: selectedDate,
+          defaultTime: rec.clockIn,
+          showDelete: true
+        });
+      }
+    });
+
+    btnDeleteSelected.addEventListener("click", () => {
+      if (!selectedDate) return;
+      const ok = confirm(`确认删除 ${selectedDate} 的记录？`);
+      if (!ok) return;
+      deleteRecord(selectedDate);
+      showToast("已删除");
+      renderHistory();
+      renderDetail(selectedDate);
+      renderHome();
+    });
+
+    // ---------------------------
+    // Backup sheet (hidden behind ⋯)
+    // ---------------------------
+    function openBackupSheet(){
+      const count = Object.values(records).filter(r => r && (r.clockIn || r.clockOut)).length;
+      backupCount.textContent = String(count);
+
+      backupBackdrop.classList.add("show");
+      backupBackdrop.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeBackupSheet(){
+      backupBackdrop.classList.remove("show");
+      backupBackdrop.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      importFile.value = "";
+    }
+
+    moreBtn.addEventListener("click", openBackupSheet);
+    backupClose.addEventListener("click", closeBackupSheet);
+    backupCancel.addEventListener("click", closeBackupSheet);
+    backupBackdrop.addEventListener("click", (e) => { if (e.target === backupBackdrop) closeBackupSheet(); });
+
+    function buildBackupPayload(){
+      return {
+        app: "Workday",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        storeKey: STORE_KEY,
+        records: records
+      };
+    }
+
+    function downloadText(filename, text){
+      const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }
+
+    btnExport.addEventListener("click", () => {
+      const payload = buildBackupPayload();
+      const ts = new Date();
+      const fname = `workday-backup-${toISODate(ts)}-${pad2(ts.getHours())}${pad2(ts.getMinutes())}.json`;
+      downloadText(fname, JSON.stringify(payload, null, 2));
+      showToast("已导出备份");
+      // 不强制关闭，让你可继续导入/关闭
+    });
+
+    btnImport.addEventListener("click", () => {
+      importFile.click();
+    });
+
+    importFile.addEventListener("change", async () => {
+      const file = importFile.files?.[0];
+      if (!file) return;
+
+      try{
+        const text = await file.text();
+        const json = JSON.parse(text);
+
+        const incoming = json?.records;
+        if (!incoming || typeof incoming !== "object"){
+          showToast("备份格式不正确");
+          return;
+        }
+
+        // 合并策略：默认“用备份覆盖当前”（最简单、可预测）
+        // 如果你想“合并并保留较新 updatedAt”，我也可以再改成 merge 策略。
+        const ok = confirm("导入将覆盖当前本机数据（可用于恢复）。是否继续？");
+        if (!ok) return;
+
+        records = incoming;
+        saveRecords();
+
+        showToast("已导入恢复");
+        closeBackupSheet();
+
+        // refresh UI
+        renderHome();
+        renderHistory();
+        if (selectedDate) renderDetail(selectedDate);
+      }catch(e){
+        console.error(e);
+        showToast("导入失败：JSON 无效");
+      }
+    });
+
+    // ---------------------------
+    // Toast
+    // ---------------------------
+    let toastTimer = null;
+    function showToast(msg){
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+    }
+
+    // ---------------------------
+    // Live ticking
+    // ---------------------------
+    function tick(){
+      nowTimeEl.textContent = nowHHmmss();
+      if (pageHome.classList.contains("active")) renderHome();
+      if (pageHistory.classList.contains("active") && selectedDate){
+        const todayISO = toISODate(new Date());
+        if (selectedDate === todayISO){
+          const rec = getRecord(todayISO);
+          if (rec && rec.clockIn && !rec.clockOut) renderDetail(selectedDate);
+        }
+      }
+    }
+
+    // ---------------------------
+    // Boot
+    // ---------------------------
+    function boot(){
+      calCursor = startOfMonth(new Date());
+      tick();
+      setInterval(tick, 1000);
+      renderHome();
+      renderHistory();
+
+      if ("serviceWorker" in navigator){
+        navigator.serviceWorker.register("./sw.js").catch(console.warn);
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
