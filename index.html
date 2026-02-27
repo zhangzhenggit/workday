@@ -118,10 +118,30 @@
     main{ padding: var(--pad); }
     .stack{ display:flex; flex-direction: column; gap: var(--gap-3); }
 
+    /* hero + subtle “energy” glow */
     .hero{
+      position: relative;
       text-align:center;
       padding: 10px 0 2px;
+      overflow: visible;
     }
+    .hero::before{
+      content:"";
+      position:absolute;
+      left: -24px;
+      right: -24px;
+      top: -18px;
+      height: 180px;
+      border-radius: 32px;
+      background:
+        radial-gradient(120px 120px at 20% 20%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 60%),
+        radial-gradient(140px 140px at 80% 35%, rgba(52,199,89,.35), transparent 65%),
+        radial-gradient(220px 220px at 50% 0%, rgba(255,159,10,.25), transparent 70%);
+      filter: blur(2px);
+      opacity: .35;
+      z-index: -1;
+    }
+
     .hero .time{
       font-size: var(--fs-hero);
       font-weight: 600;
@@ -129,9 +149,19 @@
       letter-spacing: .6px;
     }
     .hero .sub{
+      margin-top: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      opacity: .88;
+      letter-spacing: .2px;
+    }
+    .hero .sub2{
       margin-top: 6px;
-      font-size: var(--fs-sub);
+      font-size: 13px;
+      font-weight: 600;
       color: var(--subtext);
+      letter-spacing: .2px;
     }
 
     .card{
@@ -221,13 +251,6 @@
       border: 1px solid color-mix(in srgb, var(--danger) 55%, var(--line));
     }
     .btn.danger:active{ transform: scale(.99); }
-
-    .hint{
-      font-size: 12px;
-      color: var(--subtext);
-      text-align:center;
-      padding: 4px 10px;
-    }
 
     /* History calendar */
     .toolbar{
@@ -449,7 +472,8 @@
         <div class="stack">
           <div class="hero">
             <div class="time" id="nowTime">--:--:--</div>
-            <div class="sub" id="todayRule">今天：—  工时：—</div>
+            <div class="sub" id="todayLine1">—</div>
+            <div class="sub2" id="todayLine2">—</div>
           </div>
 
           <div class="card">
@@ -466,10 +490,8 @@
           <div class="stack" style="gap: 10px;">
             <button class="btn primary" id="btnClockIn" type="button">上班打卡</button>
             <button class="btn secondary" id="btnClockOut" type="button" style="display:none;">下班打卡</button>
-            <button class="btn secondary" id="btnEditToday" type="button" style="display:none;">修改记录</button>
+            <button class="btn secondary" id="btnEditToday" type="button" style="display:none;">修改下班时间</button>
           </div>
-
-          <div class="hint">数据保存在本机站点存储。建议定期手动备份（历史页右上角“⋯”）。</div>
         </div>
       </section>
 
@@ -480,7 +502,6 @@
             <div class="toolbar">
               <button class="iconbtn" id="prevMonth" type="button">‹</button>
               <div class="month" id="monthTitle">—</div>
-              <!-- 低调的备份入口：⋯ -->
               <button class="iconbtn" id="moreBtn" type="button" aria-label="更多">⋯</button>
             </div>
             <div class="calendar">
@@ -499,14 +520,16 @@
             <div id="detailBody">
               <div class="empty">点上方日历选择某一天查看记录</div>
             </div>
+
             <div style="padding: 12px 14px;" id="detailActions" hidden>
               <button class="btn secondary" id="btnEditSelected" type="button">编辑</button>
-              <div style="height:10px;"></div>
-              <button class="btn danger" id="btnDeleteSelected" type="button">删除</button>
+
+              <div id="deleteWrap">
+                <div style="height:10px;"></div>
+                <button class="btn danger" id="btnDeleteSelected" type="button">删除</button>
+              </div>
             </div>
           </div>
-
-          <div class="hint">无记录日期置灰；有记录高亮；已完成显示蓝点。</div>
         </div>
       </section>
     </main>
@@ -545,7 +568,48 @@
     </div>
   </div>
 
-  <!-- BACKUP SHEET (subtle entry via ⋯) -->
+  <!-- EDIT DAY MODAL (clockIn + clockOut) -->
+  <div class="backdrop" id="editBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal">
+      <div class="mh">
+        <div class="mt" id="editTitle">编辑记录</div>
+        <div class="ms" id="editSub">—</div>
+      </div>
+
+      <div class="mb">
+        <div class="cell">
+          <div class="row">
+            <div class="k">上班时间</div>
+            <div class="v">
+              <input id="editIn" type="time" step="60" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="k">下班时间</div>
+            <div class="v">
+              <input id="editOut" type="time" step="60" />
+            </div>
+          </div>
+          <div class="row">
+            <div class="k">计划下班</div>
+            <div class="v mono" id="editExpected">—</div>
+          </div>
+          <div class="row">
+            <div class="k">实际工时</div>
+            <div class="v mono" id="editDuration">—</div>
+          </div>
+        </div>
+        <div class="mini">提示：默认填充计划下班时间，可按实际调整。</div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" id="editCancel" type="button">取消</button>
+        <button class="btn primary" id="editSave" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKUP SHEET -->
   <div class="backdrop" id="backupBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal">
       <div class="mh">
@@ -570,7 +634,7 @@
         <button class="btn secondary" id="btnImport" type="button">导入恢复（JSON）</button>
       </div>
 
-      <div class="mini">入口已隐藏在“⋯”。建议每周或每月手动导出一次。</div>
+      <div class="mini">入口隐藏在“⋯”。建议每周或每月手动导出一次。</div>
 
       <div class="actions">
         <button class="btn secondary" id="backupClose" type="button">关闭</button>
@@ -597,7 +661,8 @@
 
     // Home
     const nowTimeEl = document.getElementById("nowTime");
-    const todayRuleEl = document.getElementById("todayRule");
+    const todayLine1El = document.getElementById("todayLine1");
+    const todayLine2El = document.getElementById("todayLine2");
     const todayBadgeEl = document.getElementById("todayBadge");
     const todayCardBody = document.getElementById("todayCardBody");
     const btnClockIn = document.getElementById("btnClockIn");
@@ -608,13 +673,13 @@
     const monthTitle = document.getElementById("monthTitle");
     const calGrid = document.getElementById("calGrid");
     const prevMonthBtn = document.getElementById("prevMonth");
-    const nextMonthBtn = document.getElementById("nextMonth"); // not used now (we use moreBtn instead of next; keep logic with cursor buttons)
     const detailTitle = document.getElementById("detailTitle");
     const detailBadge = document.getElementById("detailBadge");
     const detailBody = document.getElementById("detailBody");
     const detailActions = document.getElementById("detailActions");
     const btnEditSelected = document.getElementById("btnEditSelected");
     const btnDeleteSelected = document.getElementById("btnDeleteSelected");
+    const deleteWrap = document.getElementById("deleteWrap");
 
     // More / Backup
     const moreBtn = document.getElementById("moreBtn");
@@ -637,6 +702,22 @@
     const modalSave = document.getElementById("modalSave");
     const modalFoot = document.getElementById("modalFoot");
     const modalDelete = document.getElementById("modalDelete");
+
+    // Edit Day Modal
+    const editBackdrop = document.getElementById("editBackdrop");
+    const editTitle = document.getElementById("editTitle");
+    const editSub = document.getElementById("editSub");
+    const editIn = document.getElementById("editIn");
+    const editOut = document.getElementById("editOut");
+    const editExpected = document.getElementById("editExpected");
+    const editDuration = document.getElementById("editDuration");
+    const editCancel = document.getElementById("editCancel");
+    const editSave = document.getElementById("editSave");
+    let editDate = null; // YYYY-MM-DD
+
+    // default-follow planned out
+    let editOutAuto = false;
+    let editOutAutoBase = null;
 
     // Toast
     const toastEl = document.getElementById("toast");
@@ -830,7 +911,8 @@
       const wd = today.getDay();
 
       const hrs = workHoursByWeekday(wd);
-      todayRuleEl.textContent = `今天：${formatWeekdayCN(today)}  工时：${hrs}小时`;
+      todayLine1El.textContent = `${todayISO} · ${formatWeekdayCN(today)}`;
+      todayLine2El.textContent = `计划工时：${hrs}小时`;
 
       const rec = getRecord(todayISO);
 
@@ -876,12 +958,18 @@
     }
 
     // ---------------------------
-    // History render
+    // History render (initial select today + refresh detail)
     // ---------------------------
     function renderHistory(){
       const y = calCursor.getFullYear();
       const m = calCursor.getMonth();
       monthTitle.textContent = `${y}年 ${m+1}月`;
+
+      const today = new Date();
+      const todayISO = toISODate(today);
+      if (!selectedDate && today.getFullYear() === y && today.getMonth() === m) {
+        selectedDate = todayISO;
+      }
 
       calGrid.innerHTML = "";
       const first = new Date(y, m, 1);
@@ -889,7 +977,6 @@
       const daysInMonth = new Date(y, m+1, 0).getDate();
 
       const totalCells = 42;
-      const todayISO = toISODate(new Date());
 
       const monthRecords = {};
       for (let d=1; d<=daysInMonth; d++){
@@ -945,6 +1032,8 @@
         if (sd.getFullYear() !== y || sd.getMonth() !== m){
           selectedDate = null;
           renderDetail(null);
+        } else {
+          renderDetail(selectedDate);
         }
       } else {
         renderDetail(null);
@@ -968,14 +1057,17 @@
       const rec = getRecord(dateISO);
       const hrs = workHoursByWeekday(d.getDay());
 
+      // ✅ 无记录：按钮改为“记录”，不显示删除
       if (!rec || !rec.clockIn){
         detailBadge.textContent = "未打卡";
         detailBadge.className = "badge";
         detailBody.innerHTML = `
           <div class="row"><div class="k">工时规则</div><div class="v mono">${hrs}小时</div></div>
-          <div class="row"><div class="k">状态</div><div class="v mono">无记录（置灰）</div></div>
+          <div class="row"><div class="k">状态</div><div class="v mono">休息</div></div>
         `;
-        detailActions.hidden = true;
+        detailActions.hidden = false;
+        btnEditSelected.textContent = "记录";
+        deleteWrap.style.display = "none";
         return;
       }
 
@@ -1002,6 +1094,8 @@
       ].join("");
 
       detailActions.hidden = false;
+      btnEditSelected.textContent = "编辑";
+      deleteWrap.style.display = "block";
     }
 
     // ---------------------------
@@ -1085,7 +1179,7 @@
     }
 
     timeInput.addEventListener("input", updateCalcLine);
-    document.getElementById("modalCancel").addEventListener("click", closeClockModal);
+    modalCancel.addEventListener("click", closeClockModal);
     modalBackdrop.addEventListener("click", (e) => { if (e.target === modalBackdrop) closeClockModal(); });
 
     modalSave.addEventListener("click", () => {
@@ -1121,7 +1215,121 @@
       renderHome();
     });
 
+    // ---------------------------
+    // Edit Day Modal (clockIn + clockOut)
+    // ---------------------------
+    function openEditDayModal(dateISO){
+      editDate = dateISO;
+      const d = parseISODate(dateISO);
+      const rec = getRecord(dateISO);
+
+      editTitle.textContent = (rec && rec.clockIn) ? "编辑记录" : "记录";
+      editSub.textContent = `${dateISO} ${formatWeekdayCN(d)}`;
+
+      // 上班：无记录默认 09:00
+      editIn.value = rec?.clockIn || "09:00";
+
+      // 下班：
+      // - 有下班：用实际下班
+      // - 无下班（含无记录 / 只有上班）：默认填“计划下班时间”
+      if (rec?.clockOut) {
+        editOut.value = rec.clockOut;
+        editOutAuto = false;
+        editOutAutoBase = null;
+      } else {
+        const planned = expectedOffTime(editIn.value, d.getDay());
+        editOut.value = planned || "";
+        editOutAuto = true;
+        editOutAutoBase = editOut.value || null;
+      }
+
+      updateEditDayCalc();
+
+      editBackdrop.classList.add("show");
+      editBackdrop.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeEditDayModal(){
+      editBackdrop.classList.remove("show");
+      editBackdrop.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      editDate = null;
+      editOutAuto = false;
+      editOutAutoBase = null;
+    }
+
+    function updateEditDayCalc(){
+      if (!editDate) return;
+      const d = parseISODate(editDate);
+      const wd = d.getDay();
+
+      const inT = editIn.value;
+      const outT = editOut.value;
+
+      editExpected.textContent = inT ? (expectedOffTime(inT, wd) || "—") : "—";
+
+      const inMin = hhmmToMinutes(inT);
+      const outMin = hhmmToMinutes(outT);
+      if (inMin != null && outMin != null){
+        editDuration.textContent = humanDuration(minutesDiff(inMin, outMin));
+      } else {
+        editDuration.textContent = "—";
+      }
+    }
+
+    // ✅ 上班时间变更：如果下班仍是“自动计划值”，则跟随刷新
+    editIn.addEventListener("input", () => {
+      if (!editDate) return;
+
+      if (editOutAuto) {
+        const d = parseISODate(editDate);
+        const newPlanned = expectedOffTime(editIn.value, d.getDay());
+        if (!editOut.value || editOut.value === editOutAutoBase) {
+          editOut.value = newPlanned || "";
+          editOutAutoBase = editOut.value || null;
+        }
+      }
+      updateEditDayCalc();
+    });
+
+    // ✅ 一旦用户手动改下班，就不再自动跟随
+    editOut.addEventListener("input", () => {
+      editOutAuto = false;
+      editOutAutoBase = null;
+      updateEditDayCalc();
+    });
+
+    editCancel.addEventListener("click", closeEditDayModal);
+    editBackdrop.addEventListener("click", (e) => { if (e.target === editBackdrop) closeEditDayModal(); });
+
+    editSave.addEventListener("click", () => {
+      if (!editDate) return;
+
+      const inT = editIn.value;
+      const outT = editOut.value;
+
+      if (!inT){
+        showToast("请设置上班时间");
+        return;
+      }
+
+      upsertRecord(editDate, {
+        clockIn: inT,
+        clockOut: outT ? outT : null
+      });
+
+      showToast("已保存");
+      closeEditDayModal();
+
+      renderHome();
+      renderHistory();
+      if (selectedDate) renderDetail(selectedDate);
+    });
+
+    // ---------------------------
     // Home actions
+    // ---------------------------
     btnClockIn.addEventListener("click", () => {
       const todayISO = toISODate(new Date());
       const rec = getRecord(todayISO);
@@ -1145,7 +1353,7 @@
         mode: rec.clockOut ? "editClockOut" : "clockOut",
         dateISO: todayISO,
         defaultTime: rec.clockOut || nowHHmm(),
-        showDelete: true
+        showDelete: false
       });
     });
 
@@ -1153,50 +1361,34 @@
       const todayISO = toISODate(new Date());
       const rec = getRecord(todayISO);
       if (!rec || !rec.clockIn) return;
+
+      if (!rec.clockOut) {
+        btnClockOut.click();
+        return;
+      }
+
       openClockModal({
-        title: "修改上班时间",
+        title: "修改下班时间",
         sub: todayISO,
-        mode: "editClockIn",
+        mode: "editClockOut",
         dateISO: todayISO,
-        defaultTime: rec.clockIn,
-        showDelete: true
+        defaultTime: rec.clockOut,
+        showDelete: false
       });
     });
 
+    // ---------------------------
     // History actions
+    // ---------------------------
     prevMonthBtn.addEventListener("click", () => {
       calCursor = addMonths(calCursor, -1);
       renderHistory();
     });
 
-    // 用右侧 ⋯ 替代 nextMonth：更符合“低调入口”的需求
-    // 如你还想保留 nextMonth，可以把 ⋯ 移到底部 hint，这里我按你要求“隐藏不突出”处理。
-    // nextMonthBtn 不存在时不会报错；本页没有引用它的事件。
-
+    // History "Edit/Record" edits BOTH clockIn + clockOut
     btnEditSelected.addEventListener("click", () => {
       if (!selectedDate) return;
-      const rec = getRecord(selectedDate);
-      if (!rec || !rec.clockIn) return;
-
-      if (rec.clockOut){
-        openClockModal({
-          title: "编辑下班时间",
-          sub: selectedDate,
-          mode: "editClockOut",
-          dateISO: selectedDate,
-          defaultTime: rec.clockOut,
-          showDelete: true
-        });
-      } else {
-        openClockModal({
-          title: "编辑上班时间",
-          sub: selectedDate,
-          mode: "editClockIn",
-          dateISO: selectedDate,
-          defaultTime: rec.clockIn,
-          showDelete: true
-        });
-      }
+      openEditDayModal(selectedDate);
     });
 
     btnDeleteSelected.addEventListener("click", () => {
@@ -1211,7 +1403,7 @@
     });
 
     // ---------------------------
-    // Backup sheet (hidden behind ⋯)
+    // Backup sheet
     // ---------------------------
     function openBackupSheet(){
       const count = Object.values(records).filter(r => r && (r.clockIn || r.clockOut)).length;
@@ -1262,7 +1454,6 @@
       const fname = `workday-backup-${toISODate(ts)}-${pad2(ts.getHours())}${pad2(ts.getMinutes())}.json`;
       downloadText(fname, JSON.stringify(payload, null, 2));
       showToast("已导出备份");
-      // 不强制关闭，让你可继续导入/关闭
     });
 
     btnImport.addEventListener("click", () => {
@@ -1283,9 +1474,7 @@
           return;
         }
 
-        // 合并策略：默认“用备份覆盖当前”（最简单、可预测）
-        // 如果你想“合并并保留较新 updatedAt”，我也可以再改成 merge 策略。
-        const ok = confirm("导入将覆盖当前本机数据（可用于恢复）。是否继续？");
+        const ok = confirm("导入将覆盖当前本机数据（用于恢复）。是否继续？");
         if (!ok) return;
 
         records = incoming;
@@ -1294,7 +1483,6 @@
         showToast("已导入恢复");
         closeBackupSheet();
 
-        // refresh UI
         renderHome();
         renderHistory();
         if (selectedDate) renderDetail(selectedDate);
