@@ -339,6 +339,12 @@
       border-radius: 999px;
       background: var(--accent);
     }
+    .dot--deficit { background: #FF3B30; }   /* 时间不足（未达工时） */
+    .dot--ok      { background: #34C759; }   /* 准时或超出 0~5 分钟 */
+    .dot--ot1     { background: #5AC8FA; }   /* 超出 5~10 分钟 */
+    .dot--ot2     { background: #FFD60A; }   /* 超出 10~20 分钟 */
+    .dot--ot3     { background: #FF9F0A; }   /* 超出 20~30 分钟 */
+    .dot--ot4     { background: #BF5AF2; }   /* 超出 30 分钟以上 */
 
     /* Modal / Sheet */
     .backdrop{
@@ -795,6 +801,19 @@
       return `${sign}${h}小时${m}分钟`;
     }
 
+    function getOvertimeDotClass(rec) {
+      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, rec.weekday);
+      if (!expected) return "dot--ok";
+      const diff = hhmmToMinutes(rec.clockOut) - hhmmToMinutes(expected);
+      if (diff == null) return "dot--ok";
+      if (diff < 0)   return "dot--deficit";
+      if (diff <= 5)  return "dot--ok";
+      if (diff <= 10) return "dot--ot1";
+      if (diff <= 20) return "dot--ot2";
+      if (diff <= 30) return "dot--ot3";
+      return "dot--ot4";
+    }
+
     function startOfMonth(d){
       return new Date(d.getFullYear(), d.getMonth(), 1, 0,0,0,0);
     }
@@ -1049,7 +1068,7 @@
 
         if (rec && rec.clockIn && rec.clockOut){
           const dot = document.createElement("div");
-          dot.className = "dot";
+          dot.className = "dot " + getOvertimeDotClass(rec);
           cell.appendChild(dot);
         }
 
