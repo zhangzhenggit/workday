@@ -802,7 +802,7 @@
     }
 
     function getOvertimeDotClass(rec) {
-      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, rec.weekday, rec.date);
+      const expected = expectedOffForRecord(rec);
       if (!expected) return "dot--ok";
       const diff = hhmmToMinutes(rec.clockOut) - hhmmToMinutes(expected);
       if (diff == null) return "dot--ok";
@@ -860,6 +860,15 @@
       if (inMin == null) return null;
       const workMins = Math.round(workHoursByWeekday(weekday, dateISO) * 60);
       return minutesToHHmm(inMin + workMins);
+    }
+
+    function expectedOffForRecord(rec){
+      if (!rec?.clockIn) return null;
+      const calculated = expectedOffTime(rec.clockIn, rec.weekday, rec.date);
+      // 生效日及之后始终按新规则刷新；此前保留记录中已保存的计划下班时间
+      return rec.date >= NINE_HOUR_RULE_EFFECTIVE_DATE
+        ? calculated
+        : (rec.expectedOff || calculated);
     }
 
     // ✅ 仅当天：超过计划下班+60min后 => 已达标（不再增长）
@@ -965,7 +974,7 @@
         return;
       }
 
-      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, wd, todayISO);
+      const expected = expectedOffForRecord(rec);
       const hasOut = !!rec.clockOut;
 
       let reached = false;
@@ -1145,7 +1154,7 @@
       }
 
       // 有上班记录
-      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, d.getDay(), dateISO);
+      const expected = expectedOffForRecord(rec);
       const hasOut = !!rec.clockOut;
 
       let reached = false;
