@@ -842,33 +842,42 @@
     // ---------------------------
     // Business rules
     // ---------------------------
-    const NINE_HOUR_RULE_EFFECTIVE_DATE = "2026-08-12";
+    // 按生效日期升序排列；数组下标依次对应周日到周六
+    const WORK_HOUR_RULES = [
+      {
+        effectiveFrom: "0000-01-01",
+        hoursByWeekday: [8, 11.5, 11.5, 11.5, 11.5, 9, 8],
+      },
+      {
+        effectiveFrom: "2026-08-12",
+        hoursByWeekday: [8, 9, 9, 9, 9, 9, 8],
+      },
+    ];
 
-    function workHoursByWeekday(weekday, dateISO){
-      // 生效日前周一~周四为 11.5 小时；生效日起改为 9 小时
-      if (weekday >= 1 && weekday <= 4) {
-        return dateISO >= NINE_HOUR_RULE_EFFECTIVE_DATE ? 9 : 11.5;
+    function workHourRuleForDate(dateISO){
+      let matchedRule = WORK_HOUR_RULES[0];
+      for (const rule of WORK_HOUR_RULES) {
+        if (dateISO < rule.effectiveFrom) break;
+        matchedRule = rule;
       }
-      if (weekday === 5) return 9;
-      if (weekday === 6) return 8;
-      if (weekday === 0) return 8;
-      return 8;
+      return matchedRule;
     }
 
-    function expectedOffTime(clockInHHmm, weekday, dateISO){
+    function workHoursForDate(dateISO){
+      const weekday = parseISODate(dateISO).getDay();
+      return workHourRuleForDate(dateISO).hoursByWeekday[weekday];
+    }
+
+    function expectedOffTime(clockInHHmm, dateISO){
       const inMin = hhmmToMinutes(clockInHHmm);
       if (inMin == null) return null;
-      const workMins = Math.round(workHoursByWeekday(weekday, dateISO) * 60);
+      const workMins = Math.round(workHoursForDate(dateISO) * 60);
       return minutesToHHmm(inMin + workMins);
     }
 
     function expectedOffForRecord(rec){
       if (!rec?.clockIn) return null;
-      const calculated = expectedOffTime(rec.clockIn, rec.weekday, rec.date);
-      // 生效日及之后始终按新规则刷新；此前保留记录中已保存的计划下班时间
-      return rec.date >= NINE_HOUR_RULE_EFFECTIVE_DATE
-        ? calculated
-        : (rec.expectedOff || calculated);
+      return expectedOffTime(rec.clockIn, rec.date);
     }
 
     // ✅ 仅当天：超过计划下班+60min后 => 已达标（不再增长）
@@ -916,20 +925,15 @@
     function upsertRecord(dateISO, patch){
       const base = getRecord(dateISO);
       const now = Date.now();
-      const d = parseISODate(dateISO);
-      const weekday = d.getDay();
       const next = {
         id: base?.id || cryptoRandomId(),
         date: dateISO,
-        weekday,
         clockIn: base?.clockIn || null,
         clockOut: base?.clockOut || null,
-        expectedOff: base?.expectedOff || null,
         createdAt: base?.createdAt || now,
         updatedAt: now,
         ...patch,
       };
-      next.expectedOff = next.clockIn ? expectedOffTime(next.clockIn, weekday, dateISO) : null;
       records[dateISO] = next;
       saveRecords();
       return next;
@@ -954,9 +958,7 @@
     function renderHome(){
       const today = new Date();
       const todayISO = toISODate(today);
-      const wd = today.getDay();
-
-      const hrs = workHoursByWeekday(wd, todayISO);
+      const hrs = workHoursForDate(todayISO);
       todayLine1El.textContent = `${todayISO} · ${formatWeekdayCN(today)}`;
       todayLine2El.textContent = `计划工时：${hrs}小时`;
 
@@ -1135,7 +1137,7 @@
       }
 
       const rec = getRecord(dateISO);
-      const hrs = workHoursByWeekday(d.getDay(), dateISO);
+      const hrs = workHoursForDate(dateISO);
 
       // ✅ 过去/今天无记录：显示休息/未打卡，但允许补录（显示“记录”）
       if (!rec || !rec.clockIn){
@@ -1259,8 +1261,6 @@
 
     function updateCalcLine(){
       if (!modalDate) return;
-      const d = parseISODate(modalDate);
-      const wd = d.getDay();
       const rec = getRecord(modalDate);
 
       const t = timeInput.value;
@@ -1270,7 +1270,7 @@
       }
 
       if (modalMode === "clockIn" || modalMode === "editClockIn"){
-        const exp = expectedOffTime(t, wd, modalDate);
+        const exp = expectedOffTime(t, modalDate);
         calcValue.textContent = exp ?? "—";
       } else {
         const baseIn = rec?.clockIn;
@@ -1343,7 +1343,7 @@
         editOutAuto = false;
         editOutAutoBase = null;
       } else {
-        const planned = expectedOffTime(editIn.value, d.getDay(), dateISO);
+        const planned = expectedOffTime(editIn.value, dateISO);
         editOut.value = planned || "";
         editOutAuto = true;
         editOutAutoBase = editOut.value || null;
@@ -1367,13 +1367,10 @@
 
     function updateEditDayCalc(){
       if (!editDate) return;
-      const d = parseISODate(editDate);
-      const wd = d.getDay();
-
       const inT = editIn.value;
       const outT = editOut.value;
 
-      editExpected.textContent = inT ? (expectedOffTime(inT, wd, editDate) || "—") : "—";
+      editExpected.textContent = inT ? (expectedOffTime(inT, editDate) || "—") : "—";
 
       const inMin = hhmmToMinutes(inT);
       const outMin = hhmmToMinutes(outT);
@@ -1389,8 +1386,7 @@
       if (!editDate) return;
 
       if (editOutAuto) {
-        const d = parseISODate(editDate);
-        const newPlanned = expectedOffTime(editIn.value, d.getDay(), editDate);
+        const newPlanned = expectedOffTime(editIn.value, editDate);
         if (!editOut.value || editOut.value === editOutAutoBase) {
           editOut.value = newPlanned || "";
           editOutAutoBase = editOut.value || null;

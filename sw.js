@@ -1,4 +1,4 @@
-const CACHE_NAME = "workday-cache-v4";
+const CACHE_NAME = "workday-cache-v5";
 const ASSETS = [
   "./",
   "./index.html",
