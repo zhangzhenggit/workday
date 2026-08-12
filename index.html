@@ -802,7 +802,7 @@
     }
 
     function getOvertimeDotClass(rec) {
-      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, rec.weekday);
+      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, rec.weekday, rec.date);
       if (!expected) return "dot--ok";
       const diff = hhmmToMinutes(rec.clockOut) - hhmmToMinutes(expected);
       if (diff == null) return "dot--ok";
@@ -842,19 +842,23 @@
     // ---------------------------
     // Business rules
     // ---------------------------
-    function workHoursByWeekday(weekday){
-      // 周一~周四：11.5, 周五：9, 周六：8, 周日：8
-      if (weekday >= 1 && weekday <= 4) return 11.5;
+    const NINE_HOUR_RULE_EFFECTIVE_DATE = "2026-08-12";
+
+    function workHoursByWeekday(weekday, dateISO){
+      // 生效日前周一~周四为 11.5 小时；生效日起改为 9 小时
+      if (weekday >= 1 && weekday <= 4) {
+        return dateISO >= NINE_HOUR_RULE_EFFECTIVE_DATE ? 9 : 11.5;
+      }
       if (weekday === 5) return 9;
       if (weekday === 6) return 8;
       if (weekday === 0) return 8;
       return 8;
     }
 
-    function expectedOffTime(clockInHHmm, weekday){
+    function expectedOffTime(clockInHHmm, weekday, dateISO){
       const inMin = hhmmToMinutes(clockInHHmm);
       if (inMin == null) return null;
-      const workMins = Math.round(workHoursByWeekday(weekday) * 60);
+      const workMins = Math.round(workHoursByWeekday(weekday, dateISO) * 60);
       return minutesToHHmm(inMin + workMins);
     }
 
@@ -916,7 +920,7 @@
         updatedAt: now,
         ...patch,
       };
-      next.expectedOff = next.clockIn ? expectedOffTime(next.clockIn, weekday) : null;
+      next.expectedOff = next.clockIn ? expectedOffTime(next.clockIn, weekday, dateISO) : null;
       records[dateISO] = next;
       saveRecords();
       return next;
@@ -943,7 +947,7 @@
       const todayISO = toISODate(today);
       const wd = today.getDay();
 
-      const hrs = workHoursByWeekday(wd);
+      const hrs = workHoursByWeekday(wd, todayISO);
       todayLine1El.textContent = `${todayISO} · ${formatWeekdayCN(today)}`;
       todayLine2El.textContent = `计划工时：${hrs}小时`;
 
@@ -961,7 +965,7 @@
         return;
       }
 
-      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, wd);
+      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, wd, todayISO);
       const hasOut = !!rec.clockOut;
 
       let reached = false;
@@ -1122,7 +1126,7 @@
       }
 
       const rec = getRecord(dateISO);
-      const hrs = workHoursByWeekday(d.getDay());
+      const hrs = workHoursByWeekday(d.getDay(), dateISO);
 
       // ✅ 过去/今天无记录：显示休息/未打卡，但允许补录（显示“记录”）
       if (!rec || !rec.clockIn){
@@ -1141,7 +1145,7 @@
       }
 
       // 有上班记录
-      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, d.getDay());
+      const expected = rec.expectedOff || expectedOffTime(rec.clockIn, d.getDay(), dateISO);
       const hasOut = !!rec.clockOut;
 
       let reached = false;
@@ -1257,7 +1261,7 @@
       }
 
       if (modalMode === "clockIn" || modalMode === "editClockIn"){
-        const exp = expectedOffTime(t, wd);
+        const exp = expectedOffTime(t, wd, modalDate);
         calcValue.textContent = exp ?? "—";
       } else {
         const baseIn = rec?.clockIn;
@@ -1330,7 +1334,7 @@
         editOutAuto = false;
         editOutAutoBase = null;
       } else {
-        const planned = expectedOffTime(editIn.value, d.getDay());
+        const planned = expectedOffTime(editIn.value, d.getDay(), dateISO);
         editOut.value = planned || "";
         editOutAuto = true;
         editOutAutoBase = editOut.value || null;
@@ -1360,7 +1364,7 @@
       const inT = editIn.value;
       const outT = editOut.value;
 
-      editExpected.textContent = inT ? (expectedOffTime(inT, wd) || "—") : "—";
+      editExpected.textContent = inT ? (expectedOffTime(inT, wd, editDate) || "—") : "—";
 
       const inMin = hhmmToMinutes(inT);
       const outMin = hhmmToMinutes(outT);
@@ -1377,7 +1381,7 @@
 
       if (editOutAuto) {
         const d = parseISODate(editDate);
-        const newPlanned = expectedOffTime(editIn.value, d.getDay());
+        const newPlanned = expectedOffTime(editIn.value, d.getDay(), editDate);
         if (!editOut.value || editOut.value === editOutAutoBase) {
           editOut.value = newPlanned || "";
           editOutAutoBase = editOut.value || null;
